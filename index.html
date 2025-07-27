@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endless Rocket Adventure</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: url(086eb47e-1781-44cf-80be-bbbb84c618a6.jfif);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #fff;
+            display: block;
+            margin: 0 auto;
+            background: linear-gradient(to bottom, #000 0%, #001122 30%, #003366 60%, #87ceeb 100%);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 18px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            min-width: 200px;
+        }
+        
+        #ui div {
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #ui span {
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            max-width: 500px;
+        }
+        
+        #controls div {
+            margin-bottom: 5px;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            display: none;
+            border: 2px solid #ff6b6b;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.3);
+            min-width: 300px;
+        }
+        
+        #gameOver h2 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        #gameOver p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        
+        button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #ff5252;
+        }
+        
+        .obstacle-warning {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ff6b6b;
+            font-size: 24px;
+            animation: pulse 1s infinite;
+        }
+        
+        #pauseMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            display: none;
+            border: 2px solid #00ff88;
+            backdrop-filter: blur(10px);
+        }
+        
+        #healthBar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+        
+        #healthFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ff8e8e);
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        
+        .achievement {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 136, 0.9);
+            color: black;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            transform: translateX(300px);
+            transition: transform 0.5s ease;
+        }
+        
+        .achievement.show {
+            transform: translateX(0);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: translateY(-50%) scale(1); }
+            50% { opacity: 1; transform: translateY(-50%) scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div>🚀 Altitude: <span id="altitude">0</span>m</div>
+        <div>⚡ Speed: <span id="speed">0</span> m/s</div>
+        <div>🏆 Score: <span id="score">0</span></div>
+        <div>💀 Obstacles Hit: <span id="hits">0</span></div>
+        <div>⏱️ Time: <span id="time">0</span>s</div>
+        <div>🎯 Difficulty: <span id="difficulty">1.0</span>x</div>
+    </div>
+    
+    <div id="healthBar">
+        <div id="healthFill" style="width: 100%"></div>
+    </div>
+    
+    <canvas id="gameCanvas" width="900" height="700"></canvas>
+    
+    <div id="controls">
+        <div>🚀 SPACE/UP: Thrust | ←→: Steer | P: Pause | Avoid obstacles and survive!</div>
+        <div>Unlimited fuel • Endless sky • Getting faster over time</div>
+        <div>💚 Collect green powerups for temporary invincibility!</div>
+    </div>
+    
+    <div id="pauseMenu">
+        <h2>Game Paused</h2>
+        <p>Press P to resume</p>
+        <button onclick="resumeGame()">Resume</button>
+        <button onclick="restartGame()">Restart</button>
+    </div>
+    
+    <div id="gameOver">
+        <h2 id="gameOverTitle">Mission Failed!</h2>
+        <p id="gameOverText">You crashed into an obstacle!</p>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <p>Time Survived: <span id="finalTime">0</span> seconds</p>
+        <p>Max Altitude: <span id="maxAltitude">0</span>m</p>
+        <button onclick="restartGame()">Launch Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameState = {
+            rocket: {
+                x: canvas.width / 2,
+                y: canvas.height - 100,
+                vx: 0,
+                vy: 0,
+                angle: 0,
+                thrust: false,
+                size: 18,
+                invulnerable: 0
+            },
+            camera: {
+                y: 0,
+                targetY: 0
+            },
+            altitude: 0,
+            maxAltitude: 0,
+            score: 0,
+            gameOver: false,
+            paused: false,
+            particles: [],
+            obstacles: [],
+            powerups: [],
+            stars: [],
+            gameTime: 0,
+            obstacleHits: 0,
+            difficulty: 1,
+            nextObstacleSpawn: 0,
+            nextPowerupSpawn: 0,
+            achievements: {
+                firstHit: false,
+                altitude1000: false,
+                altitude5000: false,
+                time60: false,
+                time300: false,
+                score1000: false,
+                score5000: false
+            }
+        };
+        
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'KeyP') {
+                togglePause();
+            }
+        });
+        document.addEventListener('keyup', (e) => keys[e.code] = false);
+        
+        
+        const obstacleTypes = {
+            ASTEROID: { color: '#8B4513', size: 25, damage: 1, points: 10 },
+            SATELLITE: { color: '#C0C0C0', size: 20, damage: 1, points: 15 },
+            DEBRIS: { color: '#654321', size: 15, damage: 1, points: 5 },
+            METEOR: { color: '#FF4500', size: 35, damage: 2, points: 25 },
+            SPACE_JUNK: { color: '#708090', size: 18, damage: 1, points: 8 }
+        };
+        
+        function initEnvironment() {
+            
+            gameState.stars = [];
+            for (let i = 0; i < 200; i++) {
+                gameState.stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * 20000 - 10000,
+                    size: Math.random() * 2 + 0.5,
+                    twinkle: Math.random() * Math.PI * 2,
+                    speed: Math.random() * 0.5 + 0.1
+                });
+            }
+        }
+        
+        function createObstacle() {
+            const types = Object.keys(obstacleTypes);
+            const type = types[Math.floor(Math.random() * types.length)];
+            const obstacle = obstacleTypes[type];
+            
+            return {
+                type: type,
+                x: Math.random() * (canvas.width - obstacle.size * 2) + obstacle.size,
+                y: gameState.rocket.y - canvas.height - Math.random() * 300,
+                vx: (Math.random() - 0.5) * 2,
+                vy: Math.random() * 2 + 1,
+                size: obstacle.size + Math.random() * 10 - 5,
+                color: obstacle.color,
+                damage: obstacle.damage,
+                points: obstacle.points,
+                rotation: 0,
+                rotationSpeed: (Math.random() - 0.5) * 0.1
+            };
+        }
+        
+        function createPowerup() {
+            return {
+                type: 'SHIELD',
+                x: Math.random() * (canvas.width - 40) + 20,
+                y: gameState.rocket.y - canvas.height - Math.random() * 200,
+                size: 15,
+                color: '#00FF00',
+                collected: false,
+                pulse: 0
+            };
+        }
+        
+        function createParticle(x, y, vx, vy, color = null) {
+            return {
+                x: x,
+                y: y,
+                vx: vx + (Math.random() - 0.5) * 4,
+                vy: vy + Math.random() * 3 + 1,
+                life: 1,
+                decay: Math.random() * 0.03 + 0.02,
+                size: Math.random() * 6 + 2,
+                color: color || `hsl(${30 + Math.random() * 30}, 100%, ${50 + Math.random() * 30}%)`
+            };
+        }
+        
+        function togglePause() {
+            if (!gameState.gameOver) {
+                gameState.paused = !gameState.paused;
+                document.getElementById('pauseMenu').style.display = gameState.paused ? 'block' : 'none';
+            }
+        }
+        
+        function resumeGame() {
+            gameState.paused = false;
+            document.getElementById('pauseMenu').style.display = 'none';
+        }
+        
+        function showAchievement(text) {
+            const achievement = document.createElement('div');
+            achievement.className = 'achievement';
+            achievement.textContent = `🏆 ${text}`;
+            document.body.appendChild(achievement);
+            
+            setTimeout(() => achievement.classList.add('show'), 100);
+            setTimeout(() => {
+                achievement.classList.remove('show');
+                setTimeout(() => document.body.removeChild(achievement), 500);
+            }, 3000);
+        }
+        
+        function checkAchievements() {
+            const achievements = gameState.achievements;
+            
+            if (!achievements.firstHit && gameState.obstacleHits > 0) {
+                achievements.firstHit = true;
+                showAchievement('First Hit!');
+            }
+            
+            if (!achievements.altitude1000 && gameState.altitude >= 1000) {
+                achievements.altitude1000 = true;
+                showAchievement('Altitude 1000m!');
+            }
+            
+            if (!achievements.altitude5000 && gameState.altitude >= 5000) {
+                achievements.altitude5000 = true;
+                showAchievement('Altitude 5000m!');
+            }
+            
+            if (!achievements.time60 && gameState.gameTime >= 60) {
+                achievements.time60 = true;
+                showAchievement('1 Minute Survivor!');
+            }
+            
+            if (!achievements.time300 && gameState.gameTime >= 300) {
+                achievements.time300 = true;
+                showAchievement('5 Minute Survivor!');
+            }
+            
+            if (!achievements.score1000 && gameState.score >= 1000) {
+                achievements.score1000 = true;
+                showAchievement('Score 1000!');
+            }
+            
+            if (!achievements.score5000 && gameState.score >= 5000) {
+                achievements.score5000 = true;
+                showAchievement('Score 5000!');
+            }
+        }
+        
+        function updateGame() {
+            if (gameState.gameOver || gameState.paused) return;
+            
+            gameState.gameTime += 1/60; 
+            gameState.difficulty = 1 + gameState.gameTime * 0.1;
+            
+            const rocket = gameState.rocket;
+            
+            
+            rocket.thrust = keys['Space'] || keys['ArrowUp'];
+            
+            if (keys['ArrowLeft']) rocket.angle -= 0.06;
+            if (keys['ArrowRight']) rocket.angle += 0.06;
+            
+            
+            rocket.angle = Math.max(-Math.PI/3, Math.min(Math.PI/3, rocket.angle));
+            
+            
+            if (rocket.thrust) {
+                const thrustPower = 0.4;
+                rocket.vx += Math.sin(rocket.angle) * thrustPower;
+                rocket.vy -= Math.cos(rocket.angle) * thrustPower;
+                
+                
+                const exhaustX = rocket.x - Math.sin(rocket.angle) * rocket.size;
+                const exhaustY = rocket.y + Math.cos(rocket.angle) * rocket.size;
+                
+                for (let i = 0; i < 4; i++) {
+                    gameState.particles.push(createParticle(exhaustX, exhaustY, rocket.vx, rocket.vy));
+                }
+            }
+            
+            
+            rocket.vy += 0.05; 
+            rocket.vx *= 0.995; 
+            rocket.vy *= 0.998;
+            
+            
+            const maxSpeed = 15;
+            const speed = Math.sqrt(rocket.vx * rocket.vx + rocket.vy * rocket.vy);
+            if (speed > maxSpeed) {
+                rocket.vx = (rocket.vx / speed) * maxSpeed;
+                rocket.vy = (rocket.vy / speed) * maxSpeed;
+            }
+            
+            
+            rocket.x += rocket.vx;
+            rocket.y += rocket.vy;
+            
+            
+            if (rocket.x < rocket.size) {
+                rocket.x = rocket.size;
+                rocket.vx = Math.abs(rocket.vx) * 0.5;
+            }
+            if (rocket.x > canvas.width - rocket.size) {
+                rocket.x = canvas.width - rocket.size;
+                rocket.vx = -Math.abs(rocket.vx) * 0.5;
+            }
+            
+    
+            if (rocket.invulnerable > 0) rocket.invulnerable--;
+            
+            
+            gameState.camera.targetY = rocket.y - canvas.height * 0.6;
+            gameState.camera.y += (gameState.camera.targetY - gameState.camera.y) * 0.1;
+            
+            
+            gameState.altitude = Math.max(0, Math.floor((canvas.height - 100 - rocket.y) / 2));
+            gameState.maxAltitude = Math.max(gameState.maxAltitude, gameState.altitude);
+            gameState.score = Math.floor(gameState.altitude / 10) + gameState.obstacleHits * 50;
+            
+            // Check achievements
+            checkAchievements();
+            
+            // Update health bar
+            const healthPercent = Math.max(0, (5 - gameState.obstacleHits) / 5 * 100);
+            document.getElementById('healthFill').style.width = healthPercent + '%';
+            
+            // Update difficulty display
+            document.getElementById('difficulty').textContent = gameState.difficulty.toFixed(1);
+            
+            
+            if (gameState.gameTime > gameState.nextObstacleSpawn) {
+                gameState.obstacles.push(createObstacle());
+                gameState.nextObstacleSpawn = gameState.gameTime + (2 - gameState.difficulty * 0.1) + Math.random();
+            }
+            
+            
+            if (gameState.gameTime > gameState.nextPowerupSpawn) {
+                gameState.powerups.push(createPowerup());
+                gameState.nextPowerupSpawn = gameState.gameTime + 8 + Math.random() * 5;
+            }
+            
+            
+            gameState.obstacles = gameState.obstacles.filter(obstacle => {
+                obstacle.x += obstacle.vx * gameState.difficulty;
+                obstacle.y += obstacle.vy * gameState.difficulty;
+                obstacle.rotation += obstacle.rotationSpeed;
+                
+                if (obstacle.y > rocket.y + canvas.height || obstacle.y < rocket.y - canvas.height * 2) {
+                    return false;
+                }
+                
+                
+                const dx = rocket.x - obstacle.x;
+                const dy = rocket.y - obstacle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < (rocket.size + obstacle.size) * 0.8 && rocket.invulnerable === 0) {
+                
+                    gameState.obstacleHits += obstacle.damage;
+                    rocket.invulnerable = 120; 
+                    
+                
+                    for (let i = 0; i < 15; i++) {
+                        gameState.particles.push(createParticle(
+                            obstacle.x, obstacle.y, 
+                            (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8,
+                            '#FF4500'
+                        ));
+                    }
+                    
+                    
+                    gameState.score += obstacle.points;
+                    
+                    
+                    if (gameState.obstacleHits >= 5) {
+                        endGame();
+                        return false;
+                    }
+                    
+                    return false; 
+                }
+                
+                return true;
+            });
+            
+            
+            gameState.powerups = gameState.powerups.filter(powerup => {
+                powerup.pulse += 0.1;
+                
+            
+                if (powerup.y > rocket.y + canvas.height) return false;
+                
+                
+                const dx = rocket.x - powerup.x;
+                const dy = rocket.y - powerup.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < rocket.size + powerup.size && !powerup.collected) {
+                    powerup.collected = true;
+                    rocket.invulnerable = Math.max(rocket.invulnerable, 300); 
+                    gameState.score += 100;
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            
+            gameState.particles = gameState.particles.filter(particle => {
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.vy += 0.05; 
+                particle.life -= particle.decay;
+                return particle.life > 0;
+            });
+            
+            
+            gameState.stars.forEach(star => {
+                star.twinkle += 0.05;
+                star.y += star.speed * 0.3;
+                if (star.y > rocket.y + canvas.height) {
+                    star.y = rocket.y - canvas.height - Math.random() * canvas.height;
+                }
+            });
+        }
+        
+        function draw() {
+            // Clear canvas with gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#000011');
+            gradient.addColorStop(0.5, '#001133');
+            gradient.addColorStop(1, '#000022');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            
+            ctx.fillStyle = 'white';
+            gameState.stars.forEach(star => {
+                const screenY = star.y - gameState.camera.y;
+                if (screenY > -10 && screenY < canvas.height + 10) {
+                    const twinkleAlpha = 0.3 + 0.7 * (Math.sin(star.twinkle) * 0.5 + 0.5);
+                    ctx.globalAlpha = twinkleAlpha;
+                    ctx.beginPath();
+                    ctx.arc(star.x, screenY, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            ctx.globalAlpha = 1;
+            
+    
+            gameState.particles.forEach(particle => {
+                const screenY = particle.y - gameState.camera.y;
+                ctx.globalAlpha = particle.life;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x, screenY, particle.size * particle.life, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            
+            
+            gameState.obstacles.forEach(obstacle => {
+                const screenY = obstacle.y - gameState.camera.y;
+                
+                ctx.save();
+                ctx.translate(obstacle.x, screenY);
+                ctx.rotate(obstacle.rotation);
+                
+                
+                ctx.shadowColor = obstacle.color;
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = obstacle.color;
+                
+                if (obstacle.type === 'METEOR') {
+                
+                    ctx.beginPath();
+                    ctx.arc(0, 0, obstacle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+        
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#FF6500';
+                    ctx.beginPath();
+                    ctx.ellipse(obstacle.size/2, 0, obstacle.size/3, obstacle.size/6, 0, 0, Math.PI * 2);
+                    ctx.fill(); 
+                } else if (obstacle.type === 'SATELLITE') {
+                    
+                    ctx.
+                    ctx.fillRect(-obstacle.size/2, -obstacle.size/3, obstacle.size, obstacle.size/1.5);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(-obstacle.size/3, -obstacle.size/2, obstacle.size/1.5, obstacle.size/6);
+                    ctx.fillRect(-obstacle.size/3, obstacle.size/3, obstacle.size/1.5, obstacle.size/6);
+                } else {
+                    
+                    ctx.beginPath();
+                    ctx.arc(0, 0, obstacle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            });
+            
+            
+            gameState.powerups.forEach(powerup => {
+                const screenY = powerup.y - gameState.camera.y;
+                const pulseSize = powerup.size + Math.sin(powerup.pulse) * 3;
+                
+                ctx.shadowColor = powerup.color;
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = powerup.color;
+                ctx.beginPath();
+                ctx.arc(powerup.x, screenY, pulseSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚡', powerup.x, screenY + 4);
+            });
+            
+            
+            const rocket = gameState.rocket;
+            const screenY = rocket.y - gameState.camera.y;
+            
+            ctx.save();
+            ctx.translate(rocket.x, screenY);
+            ctx.rotate(rocket.angle);
+            
+            
+            if (rocket.invulnerable > 0) {
+                ctx.globalAlpha = 0.3 + 0.7 * (Math.sin(rocket.invulnerable * 0.3) * 0.5 + 0.5);
+                ctx.shadowColor = '#00FF00';
+                ctx.shadowBlur = 20;
+                
+                // Draw shield effect
+                ctx.strokeStyle = '#00FF00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, rocket.size * 1.5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(-rocket.size/2, -rocket.size, rocket.size, rocket.size * 2);
+            
+            
+            ctx.fillStyle = '#c0392b';
+            ctx.beginPath();
+            ctx.moveTo(-rocket.size/2, -rocket.size);
+            ctx.lineTo(0, -rocket.size * 1.5);
+            ctx.lineTo(rocket.size/2, -rocket.size);
+            ctx.fill();
+            
+        
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(-rocket.size/2 - 5, rocket.size/2, 10, 10);
+            ctx.fillRect(rocket.size/2 - 5, rocket.size/2, 10, 10);
+            
+    
+            if (rocket.thrust) {
+                const thrustLength = 15 + Math.random() * 10;
+                ctx.fillStyle = `hsl(${Math.random() * 60}, 100%, 70%)`;
+                ctx.beginPath();
+                ctx.moveTo(-rocket.size/3, rocket.size);
+                ctx.lineTo(0, rocket.size + thrustLength);
+                ctx.lineTo(rocket.size/3, rocket.size);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+            
+            
+            const nearbyObstacles = gameState.obstacles.filter(obs => {
+                const dx = rocket.x - obs.x;
+                const dy = rocket.y - obs.y;
+                return Math.sqrt(dx * dx + dy * dy) < 200;
+            });
+            
+            if (nearbyObstacles.length > 0) {
+                ctx.fillStyle = '#ff6b6b';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚠️ DANGER', canvas.width - 100, 50);
+            }
+            
+            
+            document.getElementById('altitude').textContent = gameState.altitude.toLocaleString();
+            document.getElementById('speed').textContent = Math.floor(Math.sqrt(rocket.vx * rocket.vx + rocket.vy * rocket.vy) * 10);
+            document.getElementById('score').textContent = gameState.score.toLocaleString();
+            document.getElementById('hits').textContent = gameState.obstacleHits;
+            document.getElementById('time').textContent = Math.floor(gameState.gameTime);
+        }
+        
+        function endGame() {
+            gameState.gameOver = true;
+            
+            document.getElementById('gameOverTitle').textContent = 'Mission Failed!';
+            document.getElementById('gameOverText').textContent = 'Your rocket took too much damage!';
+            document.getElementById('finalScore').textContent = gameState.score;
+            document.getElementById('finalTime').textContent = Math.floor(gameState.gameTime);
+            document.getElementById('maxAltitude').textContent = gameState.maxAltitude;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        function restartGame() {
+            gameState = {
+                rocket: {
+                    x: canvas.width / 2,
+                    y: canvas.height - 100,
+                    vx: 0,
+                    vy: 0,
+                    angle: 0,
+                    thrust: false,
+                    size: 18,
+                    invulnerable: 180
+                },
+                camera: {
+                    y: 0,
+                    targetY: 0
+                },
+                altitude: 0,
+                maxAltitude: 0,
+                score: 0,
+                gameOver: false,
+                paused: false,
+                particles: [],
+                obstacles: [],
+                powerups: [],
+                stars: [],
+                gameTime: 0,
+                obstacleHits: 0,
+                difficulty: 1,
+                nextObstacleSpawn: 2,
+                nextPowerupSpawn: 5,
+                achievements: {
+                    firstHit: false,
+                    altitude1000: false,
+                    altitude5000: false,
+                    time60: false,
+                    time300: false,
+                    score1000: false,
+                    score5000: false
+                }
+            };
+            
+            initEnvironment();
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('pauseMenu').style.display = 'none';
+            document.getElementById('healthFill').style.width = '100%';
+        }
+        
+        function gameLoop() {
+            updateGame();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        
+        initEnvironment();
+        gameLoop();
+    </script>
+</body>
+</html>
